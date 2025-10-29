@@ -1,8 +1,7 @@
 -- ===========================================
--- 📱 MOBILE FPS BOOSTER v5.0 - ULTIMATE 📱
--- ✅ 100% BUG-FREE | 10/10 PERFECT
--- ✅ Fixed: Effect counter, FPS buffer, LOD restore
--- ✅ Production Ready - Delta Mobile APK/iOS
+-- 📱 MOBILE FPS BOOSTER v6.0 - ULTRA EDITION 📱
+-- ✅ Enhanced Anti-Lag | Smart Optimization
+-- ✅ Startup Notifications | Better Performance
 -- ===========================================
 
 local Players = game:GetService("Players")
@@ -10,30 +9,48 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local SoundService = game:GetService("SoundService")
+local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
--- 🛠️ PERFECT CONFIG
+-- 🔔 NOTIFICATION SYSTEM
+local function notify(title, text, duration)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = duration or 5,
+            Icon = "rbxassetid://2541869220"
+        })
+    end)
+end
+
+-- 🛠️ ENHANCED CONFIG
 local CONFIG = {
     MAX_FPS = 240,
-    MAX_RENDER_DISTANCE = 300,
-    LOD_UPDATE_INTERVAL = 5,
-    CLEANUP_INTERVAL = 10,
+    MAX_RENDER_DISTANCE = 350,
+    LOD_UPDATE_INTERVAL = 3,
+    CLEANUP_INTERVAL = 8,
     FPS_SAMPLE_WINDOW = 1,
     GUI_UPDATE_INTERVAL = 0.1,
-    FPS_BUFFER_MAX = 300,  -- ✅ FIXED: Buffer limit
+    FPS_BUFFER_MAX = 240,
+    TEXTURE_QUALITY = 0,  -- Giảm chất lượng texture
+    MESH_DETAIL_LEVEL = 0.3,  -- Giảm chi tiết mesh
+    SOUND_VOLUME = 0.5,  -- Giảm âm lượng
     TIMEOUT = 10
 }
 
--- 📊 PERFECT STATE MANAGEMENT
+-- 📊 STATE MANAGEMENT
 local connections = {}
-local timers = { lod = 0, cleanup = 0 }
+local timers = { lod = 0, cleanup = 0, sound = 0 }
 local frameTimestamps = {}
 local guiRefs = {}
 local labels = {}
-local hiddenObjects = {}  -- ✅ NEW: Track hidden objects
-local effectCount = 0    -- ✅ FIXED: Accurate counter
+local hiddenObjects = {}
+local effectCount = 0
+local optimizedParts = 0
+local totalLagReduction = 0
 
--- 🛡️ PERFECT CLEANUP MANAGER
+-- 🛡️ CLEANUP MANAGER
 local function addConnection(conn)
     table.insert(connections, conn)
     return conn
@@ -48,75 +65,145 @@ local function cleanupAll()
         pcall(function() gui:Destroy() end)
     end
     guiRefs = {}
-    print("🧹 [CLEANUP] Ultimate cleanup complete")
+    notify("🧹 Cleanup", "Script đã tắt hoàn toàn", 3)
 end
 
 addConnection(Players.PlayerRemoving:Connect(function(plr)
     if plr == player then cleanupAll() end
 end))
 
-print("📱 [BOOSTER v5.0] Starting ULTIMATE optimization...")
+notify("📱 BOOSTER v6.0", "Đang khởi động tối ưu...", 5)
+print("📱 [BOOSTER v6.0] Starting ULTRA optimization...")
 
--- 🖥️ 1. FPS UNLOCK
+-- 🖥️ 1. FPS UNLOCK + RENDERING
 local function unlockFPS()
     local success = pcall(function()
         if setfpscap then setfpscap(CONFIG.MAX_FPS) end
         settings().Rendering.QualityLevel = Enum.SavedQualitySetting.Automatic
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+        
+        -- Giảm render fidelity
+        if sethiddenproperty then
+            pcall(function()
+                sethiddenproperty(game, "RenderFidelity", 1)
+            end)
+        end
     end)
-    print(success and "✅ FPS: 60 → " .. CONFIG.MAX_FPS or "⚠️ FPS unlock failed")
+    
+    if success then
+        notify("✅ FPS Unlocked", "Max FPS: " .. CONFIG.MAX_FPS, 4)
+        print("✅ FPS: 60 → " .. CONFIG.MAX_FPS)
+    end
 end
 
--- 🎨 2. LIGHTING OPTIMIZATION
+-- 🎨 2. AGGRESSIVE LIGHTING OPTIMIZATION
 local function optimizeLighting()
-    local success = pcall(function()
+    local removedEffects = 0
+    pcall(function()
         Lighting.GlobalShadows = false
         Lighting.FogEnd = math.huge
         Lighting.Brightness = 1
         Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+        Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
         
         for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Atmosphere") then child:Destroy() end
-        end
-        
-        for _, effect in pairs(Lighting:GetChildren()) do
-            local class = effect.ClassName
-            if class:find("Effect") and effect.Enabled then
-                effect.Enabled = false
+            if child:IsA("PostEffect") or child:IsA("Atmosphere") or 
+               child:IsA("Sky") or child:IsA("Clouds") then
+                child:Destroy()
+                removedEffects = removedEffects + 1
             end
         end
     end)
-    print(success and "✅ Lighting optimized" or "⚠️ Lighting failed")
+    
+    notify("🎨 Lighting", "Đã tối ưu ánh sáng (-" .. removedEffects .. " effects)", 3)
+    print("✅ Lighting optimized, removed " .. removedEffects .. " effects")
 end
 
--- 🧹 3. PERFECT EFFECT DISABLE ✅ FIXED COUNTER
+-- 🔇 3. SOUND OPTIMIZATION
+local function optimizeSound()
+    pcall(function()
+        SoundService.AmbientReverb = Enum.ReverbType.NoReverb
+        SoundService.DistanceFactor = 1
+        SoundService.DopplerScale = 0
+        SoundService.RolloffScale = 1
+        
+        -- Giảm âm lượng sounds xa
+        addConnection(RunService.Heartbeat:Connect(function(dt)
+            timers.sound = timers.sound + dt
+            if timers.sound >= 5 then
+                timers.sound = 0
+                local char = player.Character
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        for _, sound in pairs(Workspace:GetDescendants()) do
+                            if sound:IsA("Sound") and sound.Playing then
+                                local parent = sound.Parent
+                                if parent and parent:IsA("BasePart") then
+                                    local dist = (hrp.Position - parent.Position).Magnitude
+                                    if dist > 200 then
+                                        sound.Volume = 0
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end))
+    end)
+    notify("🔇 Sound", "Đã tối ưu âm thanh", 3)
+end
+
+-- 🧹 4. ENHANCED EFFECT DISABLE + TEXTURE
 local function disableEffects()
-    effectCount = 0  -- ✅ RESET counter
+    effectCount = 0
+    local textureOptimized = 0
     
     for _, descendant in pairs(Workspace:GetDescendants()) do
-        local disabled = pcall(function()
+        pcall(function()
+            -- Effects
             if descendant:IsA("ParticleEmitter") then
                 descendant.Enabled = false
+                descendant.Rate = 0
                 descendant.Lifetime = NumberRange.new(0)
-                return true
-            elseif descendant:IsA("Fire") or descendant:IsA("Smoke") then
+                effectCount = effectCount + 1
+            elseif descendant:IsA("Fire") or descendant:IsA("Smoke") or descendant:IsA("Sparkles") then
                 descendant.Enabled = false
-                return true
-            elseif descendant:IsA("PointLight") or descendant:IsA("SpotLight") then
+                effectCount = effectCount + 1
+            elseif descendant:IsA("PointLight") or descendant:IsA("SpotLight") or descendant:IsA("SurfaceLight") then
                 descendant.Brightness = 0
-                return true
+                descendant.Enabled = false
+                effectCount = effectCount + 1
+            elseif descendant:IsA("Beam") or descendant:IsA("Trail") then
+                descendant.Enabled = false
+                effectCount = effectCount + 1
+            -- Textures
+            elseif descendant:IsA("Texture") or descendant:IsA("Decal") then
+                descendant.Transparency = 1
+                textureOptimized = textureOptimized + 1
+            -- Parts
+            elseif descendant:IsA("BasePart") then
+                descendant.Material = Enum.Material.SmoothPlastic
+                descendant.Reflectance = 0
+                descendant.CastShadow = false
+                optimizedParts = optimizedParts + 1
+            -- Meshes
+            elseif descendant:IsA("SpecialMesh") then
+                descendant.TextureId = ""
+                textureOptimized = textureOptimized + 1
             end
-            return false
         end)
-        
-        if disabled then  -- ✅ ONLY count SUCCESSFUL disables
-            effectCount = effectCount + 1
-        end
     end
     
-    print(string.format("✅ Disabled %d effects (ACCURATE)", effectCount))
+    totalLagReduction = effectCount + textureOptimized + optimizedParts
+    notify("✅ Effects", string.format("Tắt %d effects, %d textures", effectCount, textureOptimized), 4)
+    print(string.format("✅ Disabled %d effects, %d textures, %d parts", effectCount, textureOptimized, optimizedParts))
 end
 
--- 🌍 4. ULTIMATE LOD SYSTEM ✅ VISIBILITY RESTORATION
+-- 🌍 5. ULTRA LOD SYSTEM + MESH OPTIMIZATION
 local function safeLODSystem()
     spawn(function()
         local character = player.Character or player.CharacterAdded:Wait()
@@ -136,7 +223,7 @@ local function safeLODSystem()
                 local hiddenCount = 0
                 local restoredCount = 0
                 
-                -- ✅ RESTORE NEARBY OBJECTS FIRST
+                -- Restore nearby
                 for modelKey, modelData in pairs(hiddenObjects) do
                     local model = modelData.model
                     if model and model.Parent then
@@ -144,12 +231,12 @@ local function safeLODSystem()
                         if primary then
                             local distance = (pos - primary.Position).Magnitude
                             if distance <= CONFIG.MAX_RENDER_DISTANCE then
-                                -- ✅ RESTORE VISIBILITY
                                 pcall(function()
                                     for _, part in pairs(model:GetDescendants()) do
                                         if part:IsA("BasePart") and not part.Locked then
                                             part.Transparency = modelData.originalStates[part] or 0
                                             part.CanCollide = modelData.originalCollide[part] or true
+                                            part.CastShadow = false  -- Vẫn giữ tắt shadow
                                         end
                                     end
                                 end)
@@ -158,11 +245,11 @@ local function safeLODSystem()
                             end
                         end
                     else
-                        hiddenObjects[modelKey] = nil  -- Cleanup destroyed models
+                        hiddenObjects[modelKey] = nil
                     end
                 end
                 
-                -- HIDE DISTANT OBJECTS
+                -- Hide distant + optimize
                 for _, model in pairs(Workspace:GetChildren()) do
                     if model:IsA("Model") and model ~= character then
                         local modelNameLower = model.Name:lower()
@@ -170,8 +257,7 @@ local function safeLODSystem()
                         if not model:FindFirstChild("ForceVisible") and
                            not modelNameLower:find("spawn") and
                            not modelNameLower:find("player") and
-                           not modelNameLower:find("gui") and
-                           not model.Name:find("SpawnLocation") then
+                           not modelNameLower:find("gui") then
                             
                             local primary = model.PrimaryPart or 
                                           model:FindFirstChild("HumanoidRootPart") or 
@@ -179,11 +265,11 @@ local function safeLODSystem()
                             
                             if primary then
                                 local distance = (pos - primary.Position).Magnitude
+                                
                                 if distance > CONFIG.MAX_RENDER_DISTANCE and not hiddenObjects[model] then
                                     local originalStates = {}
                                     local originalCollide = {}
                                     
-                                    -- ✅ STORE ORIGINAL STATES
                                     for _, part in pairs(model:GetDescendants()) do
                                         if part:IsA("BasePart") and not part.Locked then
                                             originalStates[part] = part.Transparency
@@ -191,7 +277,6 @@ local function safeLODSystem()
                                         end
                                     end
                                     
-                                    -- HIDE MODEL
                                     pcall(function()
                                         for _, part in pairs(model:GetDescendants()) do
                                             if part:IsA("BasePart") and not part.Locked and 
@@ -199,11 +284,11 @@ local function safeLODSystem()
                                                not part.Name:lower():find("trigger") then
                                                 part.Transparency = 1
                                                 part.CanCollide = false
+                                                part.CastShadow = false
                                             end
                                         end
                                     end)
                                     
-                                    -- ✅ TRACK FOR RESTORATION
                                     hiddenObjects[model] = {
                                         model = model,
                                         originalStates = originalStates,
@@ -215,18 +300,15 @@ local function safeLODSystem()
                         end
                     end
                 end
-                
-                if hiddenCount > 0 or restoredCount > 0 then
-                    print(string.format("🌍 LOD: +%d hidden, +%d restored", hiddenCount, restoredCount))
-                end
             end
         end))
         
-        print("✅ Ultimate LOD Active - Auto Restore")
+        notify("🌍 LOD System", "Smart LOD đã kích hoạt", 3)
+        print("✅ Ultra LOD Active with mesh optimization")
     end)
 end
 
--- 📊 5. PERFECT GUI MONITOR ✅ BUFFER LIMIT
+-- 📊 6. ENHANCED GUI MONITOR
 local function createMonitor()
     local success, playerGui = pcall(function()
         return player:WaitForChild("PlayerGui", CONFIG.TIMEOUT)
@@ -238,15 +320,15 @@ local function createMonitor()
     end
     
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "BoosterV5"
+    ScreenGui.Name = "BoosterV6"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.Parent = playerGui
     table.insert(guiRefs, ScreenGui)
     
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 190, 0, 110)
-    Frame.Position = UDim2.new(1, -200, 0, 20)
+    Frame.Size = UDim2.new(0, 200, 0, 130)
+    Frame.Position = UDim2.new(1, -210, 0, 20)
     Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
     Frame.BorderSizePixel = 0
     Frame.Active = true
@@ -258,7 +340,6 @@ local function createMonitor()
     Corner.CornerRadius = UDim.new(0, 12)
     Corner.Parent = Frame
     
-    -- Gradient cho đẹp
     local Gradient = Instance.new("UIGradient")
     Gradient.Color = ColorSequence.new{
         ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 50)),
@@ -267,21 +348,21 @@ local function createMonitor()
     Gradient.Rotation = 45
     Gradient.Parent = Frame
     
-    -- ✅ PERFECT LABELS CONFIG
     local labelsData = {
-        {name = "TitleLabel", text = "📱 BOOSTER v5.0", pos = 0, size = 12, color = Color3.new(0, 1, 1)},
+        {name = "TitleLabel", text = "📱 BOOSTER v6.0 ULTRA", pos = 0, size = 11, color = Color3.new(0, 1, 1)},
         {name = "FPSLabel", text = "FPS: --", pos = 18, size = 16},
         {name = "PingLabel", text = "PING: --ms", pos = 36, size = 16},
-        {name = "LuaLabel", text = "LUA: -- MB", pos = 54, size = 14},  -- ✅ FIXED: Clear name
-        {name = "EffectsLabel", text = "FX: " .. effectCount, pos = 70, size = 14},
-        {name = "StatusLabel", text = "Status: ACTIVE", pos = 86, size = 12, color = Color3.new(0, 1, 0)}
+        {name = "LuaLabel", text = "RAM: -- MB", pos = 54, size = 14},
+        {name = "OptLabel", text = "OPT: " .. totalLagReduction, pos = 70, size = 14, color = Color3.new(1, 0.8, 0)},
+        {name = "EffectsLabel", text = "FX: " .. effectCount, pos = 86, size = 13},
+        {name = "StatusLabel", text = "✅ ACTIVE", pos = 102, size = 12, color = Color3.new(0, 1, 0)}
     }
     
     for _, data in pairs(labelsData) do
         local label = Instance.new("TextLabel")
         label.Name = data.name
-        label.Size = UDim2.new(1, 0, 0, data.size)
-        label.Position = UDim2.new(0, 0, 0, data.pos)
+        label.Size = UDim2.new(1, -10, 0, data.size)
+        label.Position = UDim2.new(0, 5, 0, data.pos)
         label.BackgroundTransparency = 1
         label.Text = data.text
         label.TextColor3 = data.color or Color3.new(1, 1, 1)
@@ -296,31 +377,26 @@ local function createMonitor()
     local FPSLabel = labels.FPSLabel
     local PingLabel = labels.PingLabel
     local LuaLabel = labels.LuaLabel
+    local OptLabel = labels.OptLabel
     local EffectsLabel = labels.EffectsLabel
     local StatusLabel = labels.StatusLabel
     
-    -- ✅ PERFECT FPS MONITOR + BUFFER LIMIT
     local lastUpdate = tick()
-    local frameCount = 0
     
     addConnection(RunService.RenderStepped:Connect(function()
-        frameCount = frameCount + 1
         local currentTime = tick()
         
-        -- ✅ FIXED: BUFFER SIZE LIMIT
         table.insert(frameTimestamps, currentTime)
         while #frameTimestamps > CONFIG.FPS_BUFFER_MAX do
             table.remove(frameTimestamps, 1)
         end
         
-        -- Sliding window FPS
         while frameTimestamps[1] and currentTime - frameTimestamps[1] > CONFIG.FPS_SAMPLE_WINDOW do
             table.remove(frameTimestamps, 1)
         end
         
         local fps = math.floor(#frameTimestamps / CONFIG.FPS_SAMPLE_WINDOW)
         
-        -- ✅ EFFICIENT GUI UPDATES
         if currentTime - lastUpdate >= CONFIG.GUI_UPDATE_INTERVAL then
             lastUpdate = currentTime
             
@@ -330,45 +406,55 @@ local function createMonitor()
             
             FPSLabel.TextColor3 = color
             FPSLabel.Text = "FPS: " .. fps
-            
             PingLabel.Text = "PING: " .. math.floor(workspace.DistributedGameTime * 1000) % 1000 .. "ms"
-            LuaLabel.Text = "LUA: " .. math.floor(collectgarbage("count") / 1024) .. " MB"
+            LuaLabel.Text = "RAM: " .. math.floor(collectgarbage("count") / 1024) .. " MB"
+            OptLabel.Text = "OPT: " .. totalLagReduction
             EffectsLabel.Text = "FX: " .. effectCount
             StatusLabel.TextColor3 = color
         end
     end))
     
-    print("✅ Ultimate GUI Monitor Created")
+    notify("📊 Monitor", "GUI monitor đã sẵn sàng", 3)
+    print("✅ Ultra GUI Monitor Created")
 end
 
--- 🔄 PERFECT CLEANUP TIMER
+-- 🔄 AGGRESSIVE CLEANUP
 local function startCleanup()
     addConnection(RunService.Heartbeat:Connect(function(deltaTime)
         timers.cleanup = timers.cleanup + deltaTime
         if timers.cleanup >= CONFIG.CLEANUP_INTERVAL then
             timers.cleanup = 0
-            collectgarbage("incremental")
+            collectgarbage("collect")  -- Full GC
         end
     end))
-    print("✅ Perfect cleanup active")
+    print("✅ Aggressive cleanup active")
 end
 
--- 🚀 ULTIMATE INITIALIZATION
+-- 🚀 ULTRA INITIALIZATION
 local function initialize()
     unlockFPS()
+    task.wait(0.5)
     optimizeLighting()
+    task.wait(0.5)
+    optimizeSound()
+    task.wait(0.5)
     disableEffects()
+    task.wait(0.5)
     safeLODSystem()
+    task.wait(0.5)
     createMonitor()
     startCleanup()
-    print("🎉 [v5.0] ULTIMATE INITIALIZATION COMPLETE!")
-    print("🏆 Script Status: 10/10 PERFECT")
+    
+    notify("🎉 Hoàn tất!", string.format("Tối ưu %d objects thành công!", totalLagReduction), 6)
+    print("🎉 [v6.0] ULTRA INITIALIZATION COMPLETE!")
+    print("🏆 Optimized: " .. totalLagReduction .. " objects")
 end
 
--- 🎮 PERFECT START
+-- 🎮 START
 local success = pcall(initialize)
 if not success then
     warn("❌ Critical failure")
+    notify("❌ Lỗi", "Script gặp sự cố khi khởi động", 5)
 end
 
 game:BindToClose(cleanupAll)
