@@ -1,5 +1,5 @@
 -- ============================================
--- PHẦN 1: DEBUG SYSTEM
+-- PHẦN 1 NÂNG CẤP: DEBUG SYSTEM PRO
 -- Copy phần này TRƯỚC, paste vào đầu script
 -- ============================================
 
@@ -7,6 +7,16 @@ local DebugSystem = {}
 local logs = {}
 local maxLogs = 50
 local debugEnabled = true
+local currentFilter = "ALL" -- "ALL", "INFO", "WARNING", "ERROR", "SUCCESS"
+local startTime = tick()
+
+-- [1] GLOBAL ERROR CATCHER - Bắt lỗi tự động
+game:GetService("ScriptContext").Error:Connect(function(msg, stack)
+    if debugEnabled then
+        table.insert(logs, string.format("[%s] ⚡ RUNTIME ERROR: %s", os.date("%H:%M:%S"), tostring(msg)))
+        if #logs > maxLogs then table.remove(logs, 1) end
+    end
+end)
 
 local function createDebugGUI()
     local player = game.Players.LocalPlayer
@@ -17,10 +27,10 @@ local function createDebugGUI()
     
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 320, 0, 220)
-    mainFrame.Position = UDim2.new(1, -330, 0, 10)
+    mainFrame.Size = UDim2.new(0, 340, 0, 260)
+    mainFrame.Position = UDim2.new(1, -350, 0, 10)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    mainFrame.BackgroundTransparency = 0.2
+    mainFrame.BackgroundTransparency = 0.15
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
@@ -35,8 +45,8 @@ local function createDebugGUI()
     header.Size = UDim2.new(1, 0, 0, 28)
     header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     header.BorderSizePixel = 0
-    header.Text = "🔍 DEBUG LOG"
-    header.TextColor3 = Color3.fromRGB(0, 255, 0)
+    header.Text = "🔍 DEBUG PRO"
+    header.TextColor3 = Color3.fromRGB(0, 255, 100)
     header.TextSize = 14
     header.Font = Enum.Font.GothamBold
     header.Parent = mainFrame
@@ -45,13 +55,26 @@ local function createDebugGUI()
     headerCorner.CornerRadius = UDim.new(0, 8)
     headerCorner.Parent = header
     
+    -- Uptime label
+    local uptimeLabel = Instance.new("TextLabel")
+    uptimeLabel.Name = "Uptime"
+    uptimeLabel.Size = UDim2.new(1, 0, 0, 18)
+    uptimeLabel.Position = UDim2.new(0, 0, 0, 28)
+    uptimeLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    uptimeLabel.BorderSizePixel = 0
+    uptimeLabel.Text = "⏱ Uptime: 00:00"
+    uptimeLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+    uptimeLabel.TextSize = 10
+    uptimeLabel.Font = Enum.Font.Gotham
+    uptimeLabel.Parent = mainFrame
+    
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Name = "ScrollFrame"
-    scrollFrame.Size = UDim2.new(1, -10, 1, -68)
-    scrollFrame.Position = UDim2.new(0, 5, 0, 32)
+    scrollFrame.Size = UDim2.new(1, -10, 1, -110)
+    scrollFrame.Position = UDim2.new(0, 5, 0, 48)
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarThickness = 3
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     scrollFrame.Parent = mainFrame
     
@@ -68,41 +91,97 @@ local function createDebugGUI()
     logText.TextWrapped = true
     logText.Parent = scrollFrame
     
+    -- Filter buttons
+    local filterFrame = Instance.new("Frame")
+    filterFrame.Size = UDim2.new(1, 0, 0, 28)
+    filterFrame.Position = UDim2.new(0, 0, 1, -58)
+    filterFrame.BackgroundTransparency = 1
+    filterFrame.Parent = mainFrame
+    
+    local filterButtons = {
+        {text = "ALL", pos = 0},
+        {text = "✅", pos = 0.2, filter = "SUCCESS"},
+        {text = "❌", pos = 0.4, filter = "ERROR"},
+        {text = "⚠️", pos = 0.6, filter = "WARNING"},
+        {text = "ℹ️", pos = 0.8, filter = "INFO"}
+    }
+    
+    for _, btn in ipairs(filterButtons) do
+        local filterBtn = Instance.new("TextButton")
+        filterBtn.Size = UDim2.new(0.18, 0, 1, 0)
+        filterBtn.Position = UDim2.new(btn.pos, 0, 0, 0)
+        filterBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        filterBtn.Text = btn.text
+        filterBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        filterBtn.TextSize = 11
+        filterBtn.Font = Enum.Font.GothamBold
+        filterBtn.Parent = filterFrame
+        
+        local fbCorner = Instance.new("UICorner")
+        fbCorner.CornerRadius = UDim.new(0, 5)
+        fbCorner.Parent = filterBtn
+        
+        filterBtn.MouseButton1Click:Connect(function()
+            currentFilter = btn.filter or "ALL"
+            for _, b in ipairs(filterFrame:GetChildren()) do
+                if b:IsA("TextButton") then
+                    b.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                end
+            end
+            filterBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 70)
+        end)
+    end
+    
     local buttonFrame = Instance.new("Frame")
-    buttonFrame.Size = UDim2.new(1, 0, 0, 32)
-    buttonFrame.Position = UDim2.new(0, 0, 1, -32)
+    buttonFrame.Size = UDim2.new(1, 0, 0, 26)
+    buttonFrame.Position = UDim2.new(0, 0, 1, -28)
     buttonFrame.BackgroundTransparency = 1
     buttonFrame.Parent = mainFrame
     
     local clearBtn = Instance.new("TextButton")
     clearBtn.Name = "ClearButton"
-    clearBtn.Size = UDim2.new(0.48, 0, 1, -5)
+    clearBtn.Size = UDim2.new(0.32, 0, 1, 0)
     clearBtn.Position = UDim2.new(0.01, 0, 0, 0)
     clearBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     clearBtn.Text = "Xóa"
     clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    clearBtn.TextSize = 12
+    clearBtn.TextSize = 11
     clearBtn.Font = Enum.Font.GothamBold
     clearBtn.Parent = buttonFrame
     
     local clearCorner = Instance.new("UICorner")
-    clearCorner.CornerRadius = UDim.new(0, 6)
+    clearCorner.CornerRadius = UDim.new(0, 5)
     clearCorner.Parent = clearBtn
     
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Name = "ToggleButton"
-    toggleBtn.Size = UDim2.new(0.48, 0, 1, -5)
-    toggleBtn.Position = UDim2.new(0.51, 0, 0, 0)
+    toggleBtn.Size = UDim2.new(0.32, 0, 1, 0)
+    toggleBtn.Position = UDim2.new(0.34, 0, 0, 0)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
     toggleBtn.Text = "Ẩn/Hiện"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
+    toggleBtn.TextSize = 11
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.Parent = buttonFrame
     
     local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 6)
+    toggleCorner.CornerRadius = UDim.new(0, 5)
     toggleCorner.Parent = toggleBtn
+    
+    local saveBtn = Instance.new("TextButton")
+    saveBtn.Name = "SaveButton"
+    saveBtn.Size = UDim2.new(0.32, 0, 1, 0)
+    saveBtn.Position = UDim2.new(0.67, 0, 0, 0)
+    saveBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+    saveBtn.Text = "💾"
+    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveBtn.TextSize = 14
+    saveBtn.Font = Enum.Font.GothamBold
+    saveBtn.Parent = buttonFrame
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 5)
+    saveCorner.Parent = saveBtn
     
     clearBtn.MouseButton1Click:Connect(function()
         logs = {}
@@ -116,65 +195,137 @@ local function createDebugGUI()
         mainFrame.Visible = visible
     end)
     
+    saveBtn.MouseButton1Click:Connect(function()
+        if writefile and isfolder then
+            if not isfolder("DebugLogs") then makefolder("DebugLogs") end
+            local filename = "DebugLogs/" .. os.date("%Y-%m-%d_%H-%M-%S") .. ".txt"
+            writefile(filename, table.concat(logs, "\n"))
+            saveBtn.Text = "✓"
+            task.wait(1)
+            saveBtn.Text = "💾"
+        else
+            saveBtn.Text = "✗"
+            task.wait(1)
+            saveBtn.Text = "💾"
+        end
+    end)
+    
     screenGui.Parent = player:WaitForChild("PlayerGui")
-    return logText, scrollFrame
+    return logText, scrollFrame, uptimeLabel
 end
 
-local logTextLabel, scrollFrame = createDebugGUI()
+local logTextLabel, scrollFrame, uptimeLabel = createDebugGUI()
 
+-- Uptime tracker
+task.spawn(function()
+    while task.wait(1) do
+        local elapsed = math.floor(tick() - startTime)
+        local min = math.floor(elapsed / 60)
+        local sec = elapsed % 60
+        uptimeLabel.Text = string.format("⏱ Uptime: %02d:%02d", min, sec)
+    end
+end)
+
+local lastUpdateTime = 0
 local function updateLogDisplay()
-    local text = table.concat(logs, "\n")
-    logTextLabel.Text = text
+    if tick() - lastUpdateTime < 0.05 then return end
+    lastUpdateTime = tick()
+    
+    local filtered = {}
+    for _, msg in ipairs(logs) do
+        if currentFilter == "ALL" then
+            table.insert(filtered, msg)
+        elseif currentFilter == "SUCCESS" and string.find(msg, "✅") then
+            table.insert(filtered, msg)
+        elseif currentFilter == "ERROR" and string.find(msg, "❌") then
+            table.insert(filtered, msg)
+        elseif currentFilter == "WARNING" and string.find(msg, "⚠️") then
+            table.insert(filtered, msg)
+        elseif currentFilter == "INFO" and string.find(msg, "ℹ️") then
+            table.insert(filtered, msg)
+        end
+    end
+    
+    logTextLabel.Text = table.concat(filtered, "\n")
+    
     local textSize = game:GetService("TextService"):GetTextSize(
-        text, logTextLabel.TextSize, logTextLabel.Font,
+        logTextLabel.Text,
+        logTextLabel.TextSize,
+        logTextLabel.Font,
         Vector2.new(logTextLabel.AbsoluteSize.X, math.huge)
     )
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, textSize.Y + 10)
-    scrollFrame.CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)
+    
+    -- Smooth scroll to bottom
+    game:GetService("TweenService"):Create(
+        scrollFrame,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)}
+    ):Play()
 end
 
-function DebugSystem.log(message, level)
+-- [2] LOG với SOURCE TAG
+function DebugSystem.log(message, level, source)
     if not debugEnabled then return end
     level = level or "INFO"
+    source = source or "MAIN"
+    
     local timestamp = os.date("%H:%M:%S")
     local prefix = level == "ERROR" and "❌" or level == "SUCCESS" and "✅" or level == "WARNING" and "⚠️" or "ℹ️"
-    local logMessage = string.format("[%s] %s %s", timestamp, prefix, tostring(message))
+    
+    local logMessage = string.format("[%s][%s] %s %s", timestamp, source, prefix, tostring(message))
     table.insert(logs, logMessage)
+    
     if #logs > maxLogs then table.remove(logs, 1) end
+    
     updateLogDisplay()
     print(logMessage)
 end
 
-function DebugSystem.info(msg) DebugSystem.log(msg, "INFO") end
-function DebugSystem.error(msg) DebugSystem.log(msg, "ERROR") end
-function DebugSystem.success(msg) DebugSystem.log(msg, "SUCCESS") end
-function DebugSystem.warn(msg) DebugSystem.log(msg, "WARNING") end
+function DebugSystem.info(msg, src) DebugSystem.log(msg, "INFO", src) end
+function DebugSystem.error(msg, src) DebugSystem.log(msg, "ERROR", src) end
+function DebugSystem.success(msg, src) DebugSystem.log(msg, "SUCCESS", src) end
+function DebugSystem.warn(msg, src) DebugSystem.log(msg, "WARNING", src) end
 
 function DebugSystem.try(func, funcName)
     funcName = funcName or "Unknown"
-    DebugSystem.info("Chạy: " .. funcName)
+    DebugSystem.info("Chạy: " .. funcName, "TRY")
     local success, result = pcall(func)
     if success then
-        DebugSystem.success(funcName .. " OK")
+        DebugSystem.success(funcName .. " OK", "TRY")
         return true, result
     else
-        DebugSystem.error(funcName .. " LỖI: " .. tostring(result))
+        DebugSystem.error(funcName .. " LỖI: " .. tostring(result), "TRY")
         return false, result
     end
 end
 
-DebugSystem.success("Debug System khởi động!")
+function DebugSystem.setFilter(filter)
+    currentFilter = filter
+    DebugSystem.success("Bộ lọc: " .. filter, "SYSTEM")
+    updateLogDisplay()
+end
+
+-- [4] PERFORMANCE MONITOR (tùy chọn - có thể tắt nếu lag)
+local perfMonEnabled = false -- Đổi thành true nếu muốn bật
+if perfMonEnabled then
+    task.spawn(function()
+        local run = game:GetService("RunService")
+        local stats = game:GetService("Stats")
+        while task.wait(10) do
+            local fps = math.floor(1 / run.Heartbeat:Wait())
+            local ping = math.floor(stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            DebugSystem.info(string.format("FPS:%d Ping:%dms", fps, ping), "PERF")
+        end
+    end)
+end
+
+DebugSystem.success("Debug System Pro khởi động!", "SYSTEM")
 
 -- ============================================
 -- HẾT PHẦN 1 - Giờ copy PHẦN 2
 -- ============================================
--- ============================================
--- PHẦN 2: AIMBOT SCRIPT
--- Copy phần này SAU, paste ngay sau PHẦN 1
--- ============================================
-
-DebugSystem.info("Bắt đầu load Aimbot...")
-
+-- Roblox Aimbot v2.5 - Auto Fix Lag
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -182,36 +333,28 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Lighting = game:GetService("Lighting")
 
--- AUTO FIX LAG
-DebugSystem.info("Đang tối ưu đồ họa...")
-DebugSystem.try(function()
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    for _, v in pairs(Lighting:GetDescendants()) do
-        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
-            v.Enabled = false
-        end
+-- AUTO FIX LAG (Chạy ngay khi load script)
+settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+for _, v in pairs(Lighting:GetDescendants()) do
+    if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
+        v.Enabled = false
     end
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 9e9
-    DebugSystem.success("Tắt hiệu ứng đồ họa")
-end, "Tối ưu Lighting")
+end
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
 
-DebugSystem.try(function()
-    local count = 0
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-            obj.Enabled = false
-            count = count + 1
-        elseif obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
-            obj.Material = Enum.Material.SmoothPlastic
-            obj.Reflectance = 0
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then
-            obj.Transparency = 1
-        end
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+        obj.Enabled = false
+    elseif obj:IsA("MeshPart") or obj:IsA("UnionOperation") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Reflectance = 0
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 1
     end
-    DebugSystem.success("Xóa " .. count .. " hiệu ứng")
-end, "Tối ưu Workspace")
+end
 
+-- Cấu hình
 local Settings = {
     Enabled = false,
     MaxDistance = 800,
@@ -227,8 +370,6 @@ local Settings = {
     RadarDangerZone = 15,
     RadarWarningZone = 25
 }
-
-DebugSystem.info("Cấu hình: MaxDist=" .. Settings.MaxDistance .. "m")
 
 local CurrentTarget = nil
 local Connection = nil
@@ -372,240 +513,201 @@ local function SmartMove()
 end
 
 local function TurnOn()
-    DebugSystem.info("Bật Aimbot...")
     Settings.Enabled = true
     local char = LocalPlayer.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then 
-            OriginalWalkSpeed = humanoid.WalkSpeed
-            DebugSystem.info("WalkSpeed gốc: " .. OriginalWalkSpeed)
-        end
+        if humanoid then OriginalWalkSpeed = humanoid.WalkSpeed end
     end
-    
-    DebugSystem.try(function()
-        Connection = RunService.RenderStepped:Connect(function()
-            if not Settings.Enabled then return end
-            local currentTime = tick()
-            if currentTime - LastTargetUpdate >= Settings.TargetUpdateInterval then
-                LastTargetUpdate = currentTime
-                local needsUpdate = false
-                if not CurrentTarget or not CurrentTarget.Parent then
+    Connection = RunService.RenderStepped:Connect(function()
+        if not Settings.Enabled then return end
+        local currentTime = tick()
+        if currentTime - LastTargetUpdate >= Settings.TargetUpdateInterval then
+            LastTargetUpdate = currentTime
+            local needsUpdate = false
+            if not CurrentTarget or not CurrentTarget.Parent then
+                needsUpdate = true
+            else
+                local humanoid = CurrentTarget:FindFirstChildOfClass("Humanoid")
+                if not humanoid or humanoid.Health <= 0 then
                     needsUpdate = true
                 else
-                    local humanoid = CurrentTarget:FindFirstChildOfClass("Humanoid")
-                    if not humanoid or humanoid.Health <= 0 then
-                        needsUpdate = true
-                    else
-                        local targetPart = CurrentTarget:FindFirstChild(Settings.AimPart) or CurrentTarget:FindFirstChild("Head")
-                        if targetPart and Settings.WallCheck and CheckWall(targetPart) then needsUpdate = true end
-                    end
-                end
-                if needsUpdate then 
-                    CurrentTarget = GetClosestMob()
-                    if CurrentTarget then
-                        DebugSystem.success("Khóa mục tiêu: " .. CurrentTarget.Name)
-                    end
+                    local targetPart = CurrentTarget:FindFirstChild(Settings.AimPart) or CurrentTarget:FindFirstChild("Head")
+                    if targetPart and Settings.WallCheck and CheckWall(targetPart) then needsUpdate = true end
                 end
             end
-            if CurrentTarget then AimAt(CurrentTarget) end
-            if Settings.EvasionEnabled then SmartMove() end
-        end)
-        DebugSystem.success("RenderStepped kết nối")
-    end, "Kết nối Aimbot Loop")
-    
+            if needsUpdate then CurrentTarget = GetClosestMob() end
+        end
+        if CurrentTarget then AimAt(CurrentTarget) end
+        if Settings.EvasionEnabled then SmartMove() end
+    end)
     if Settings.RadarEnabled then
-        DebugSystem.try(function()
-            RadarConnection = RunService.Heartbeat:Connect(function()
-                if Settings.Enabled then NearestThreat = ScanNearbyThreats() end
-            end)
-            DebugSystem.success("Radar kích hoạt")
-        end, "Kết nối Radar")
+        RadarConnection = RunService.Heartbeat:Connect(function()
+            if Settings.Enabled then NearestThreat = ScanNearbyThreats() end
+        end)
     end
 end
 
 local function TurnOff()
-    DebugSystem.warn("Tắt Aimbot...")
     Settings.Enabled = false
     CurrentTarget = nil
     NearestThreat = nil
-    if Connection then 
-        Connection:Disconnect() 
-        Connection = nil
-        DebugSystem.info("Disconnect RenderStepped")
-    end
-    if RadarConnection then 
-        RadarConnection:Disconnect() 
-        RadarConnection = nil
-        DebugSystem.info("Disconnect Radar")
-    end
+    if Connection then Connection:Disconnect() Connection = nil end
+    if RadarConnection then RadarConnection:Disconnect() RadarConnection = nil end
     local char = LocalPlayer.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then 
-            humanoid.WalkSpeed = OriginalWalkSpeed
-            DebugSystem.info("Reset WalkSpeed")
-        end
+        if humanoid then humanoid.WalkSpeed = OriginalWalkSpeed end
     end
 end
 
-DebugSystem.info("Tạo GUI Aimbot...")
-DebugSystem.try(function()
-    local ScreenGui = Instance.new("ScreenGui")
-    local MainFrame = Instance.new("Frame")
-    local UICorner = Instance.new("UICorner")
-    local Title = Instance.new("TextLabel")
-    local TitleCorner = Instance.new("UICorner")
-    local ToggleBtn = Instance.new("TextButton")
-    local BtnCorner = Instance.new("UICorner")
-    local StatusLabel = Instance.new("TextLabel")
-    local TargetInfoLabel = Instance.new("TextLabel")
-    local RadarLabel = Instance.new("TextLabel")
-    local WarningLabel = Instance.new("TextLabel")
+-- TẠO GUI
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local Title = Instance.new("TextLabel")
+local TitleCorner = Instance.new("UICorner")
+local ToggleBtn = Instance.new("TextButton")
+local BtnCorner = Instance.new("UICorner")
+local StatusLabel = Instance.new("TextLabel")
+local TargetInfoLabel = Instance.new("TextLabel")
+local RadarLabel = Instance.new("TextLabel")
+local WarningLabel = Instance.new("TextLabel")
 
-    ScreenGui.Name = "AimbotGUI"
-    ScreenGui.Parent = game:GetService("CoreGui")
-    ScreenGui.ResetOnSpawn = false
+ScreenGui.Name = "AimbotGUI"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
 
-    MainFrame.Parent = ScreenGui
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Position = UDim2.new(0.02, 0, 0.3, 0)
-    MainFrame.Size = UDim2.new(0, 240, 0, 230)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.02, 0, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 240, 0, 230)
+MainFrame.Active = true
+MainFrame.Draggable = true
 
-    UICorner.CornerRadius = UDim.new(0, 10)
-    UICorner.Parent = MainFrame
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
 
-    Title.Parent = MainFrame
-    Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    Title.Size = UDim2.new(1, 0, 0, 35)
-    Title.Font = Enum.Font.GothamBold
-    Title.Text = "🎯 AIMBOT v2.5"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 18
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "🎯 AIMBOT v2.5"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
 
-    TitleCorner.CornerRadius = UDim.new(0, 10)
-    TitleCorner.Parent = Title
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = Title
 
-    ToggleBtn.Parent = MainFrame
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-    ToggleBtn.Position = UDim2.new(0.1, 0, 0.18, 0)
-    ToggleBtn.Size = UDim2.new(0.8, 0, 0, 38)
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.Text = "OFF"
-    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleBtn.TextSize = 20
+ToggleBtn.Parent = MainFrame
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+ToggleBtn.Position = UDim2.new(0.1, 0, 0.18, 0)
+ToggleBtn.Size = UDim2.new(0.8, 0, 0, 38)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "OFF"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 20
 
-    BtnCorner.CornerRadius = UDim.new(0, 8)
-    BtnCorner.Parent = ToggleBtn
+BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.Parent = ToggleBtn
 
-    TargetInfoLabel.Parent = MainFrame
-    TargetInfoLabel.BackgroundTransparency = 1
-    TargetInfoLabel.Position = UDim2.new(0, 0, 0.39, 0)
-    TargetInfoLabel.Size = UDim2.new(1, 0, 0, 22)
-    TargetInfoLabel.Font = Enum.Font.Gotham
-    TargetInfoLabel.Text = "🎯 Target: None"
-    TargetInfoLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
-    TargetInfoLabel.TextSize = 12
+TargetInfoLabel.Parent = MainFrame
+TargetInfoLabel.BackgroundTransparency = 1
+TargetInfoLabel.Position = UDim2.new(0, 0, 0.39, 0)
+TargetInfoLabel.Size = UDim2.new(1, 0, 0, 22)
+TargetInfoLabel.Font = Enum.Font.Gotham
+TargetInfoLabel.Text = "🎯 Target: None"
+TargetInfoLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+TargetInfoLabel.TextSize = 12
 
-    RadarLabel.Parent = MainFrame
-    RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    RadarLabel.Position = UDim2.new(0.05, 0, 0.51, 0)
-    RadarLabel.Size = UDim2.new(0.9, 0, 0, 35)
-    RadarLabel.Font = Enum.Font.GothamBold
-    RadarLabel.Text = "📡 RADAR: Clear"
-    RadarLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    RadarLabel.TextSize = 14
+RadarLabel.Parent = MainFrame
+RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+RadarLabel.Position = UDim2.new(0.05, 0, 0.51, 0)
+RadarLabel.Size = UDim2.new(0.9, 0, 0, 35)
+RadarLabel.Font = Enum.Font.GothamBold
+RadarLabel.Text = "📡 RADAR: Clear"
+RadarLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+RadarLabel.TextSize = 14
 
-    local RadarCorner = Instance.new("UICorner")
-    RadarCorner.CornerRadius = UDim.new(0, 6)
-    RadarCorner.Parent = RadarLabel
+local RadarCorner = Instance.new("UICorner")
+RadarCorner.CornerRadius = UDim.new(0, 6)
+RadarCorner.Parent = RadarLabel
 
-    WarningLabel.Parent = MainFrame
-    WarningLabel.BackgroundTransparency = 1
-    WarningLabel.Position = UDim2.new(0, 0, 0.70, 0)
-    WarningLabel.Size = UDim2.new(1, 0, 0, 28)
-    WarningLabel.Font = Enum.Font.GothamBold
-    WarningLabel.Text = "✅ AN TOÀN"
-    WarningLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    WarningLabel.TextSize = 16
+WarningLabel.Parent = MainFrame
+WarningLabel.BackgroundTransparency = 1
+WarningLabel.Position = UDim2.new(0, 0, 0.70, 0)
+WarningLabel.Size = UDim2.new(1, 0, 0, 28)
+WarningLabel.Font = Enum.Font.GothamBold
+WarningLabel.Text = "✅ AN TOÀN"
+WarningLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+WarningLabel.TextSize = 16
 
-    StatusLabel.Parent = MainFrame
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.Position = UDim2.new(0, 0, 0.85, 0)
-    StatusLabel.Size = UDim2.new(1, 0, 0, 20)
-    StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.Text = "Status: Offline"
-    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    StatusLabel.TextSize = 11
+StatusLabel.Parent = MainFrame
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Position = UDim2.new(0, 0, 0.85, 0)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Text = "Status: Offline"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.TextSize = 11
 
-    ToggleBtn.MouseButton1Click:Connect(function()
-        if Settings.Enabled then
-            TurnOff()
-            ToggleBtn.Text = "OFF"
-            ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-            StatusLabel.Text = "Status: Offline"
-            TargetInfoLabel.Text = "🎯 Target: None"
-            RadarLabel.Text = "📡 RADAR: Offline"
-            WarningLabel.Text = "✅ AN TOÀN"
-        else
-            TurnOn()
-            ToggleBtn.Text = "ON"
-            ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
-            StatusLabel.Text = "Status: Active 🎯"
-        end
-    end)
+ToggleBtn.MouseButton1Click:Connect(function()
+    if Settings.Enabled then
+        TurnOff()
+        ToggleBtn.Text = "OFF"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        StatusLabel.Text = "Status: Offline"
+        TargetInfoLabel.Text = "🎯 Target: None"
+        RadarLabel.Text = "📡 RADAR: Offline"
+        WarningLabel.Text = "✅ AN TOÀN"
+    else
+        TurnOn()
+        ToggleBtn.Text = "ON"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+        StatusLabel.Text = "Status: Active 🎯"
+    end
+end)
 
-    spawn(function()
-        while wait(0.08) do
-            if Settings.Enabled then
-                local char = LocalPlayer.Character
-                if char and CurrentTarget and CurrentTarget.Parent then
-                    local humanoid = CurrentTarget:FindFirstChildOfClass("Humanoid")
-                    local hrpTarget = CurrentTarget:FindFirstChild("HumanoidRootPart")
-                    local hrpPlayer = char:FindFirstChild("HumanoidRootPart")
-                    if humanoid and hrpTarget and hrpPlayer and humanoid.Health > 0 then
-                        local distance = (hrpPlayer.Position - hrpTarget.Position).Magnitude
-                        StatusLabel.Text = "🎯 Locked: " .. CurrentTarget.Name
-                        TargetInfoLabel.Text = string.format("🎯 HP: %.0f | %.1fm", humanoid.Health, distance)
-                    end
-                else
-                    StatusLabel.Text = "🔍 Searching..."
-                end
-                if NearestThreat and NearestThreat.Model and NearestThreat.Model.Parent then
-                    local d = NearestThreat.Distance
-                    RadarLabel.Text = string.format("📡 %s | %.1fm", NearestThreat.Name, d)
-                    if d < Settings.RadarDangerZone then
-                        RadarLabel.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
-                        WarningLabel.Text = "🚨 NGUY HIỂM!"
-                        WarningLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-                    elseif d < Settings.RadarWarningZone then
-                        RadarLabel.BackgroundColor3 = Color3.fromRGB(180, 140, 0)
-                        WarningLabel.Text = "⚠️ CẢNH GIÁC!"
-                        WarningLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-                    else
-                        RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
-                        WarningLabel.Text = "✅ AN TOÀN"
-                        WarningLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-                    end
-                else
-                    RadarLabel.Text = "📡 RADAR: Clear ✓"
-                    RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                end
-            end
-        end
-    end)
-    
-    DebugSystem.success("GUI tạo thành công!")
-end, "Tạo GUI")
-
-DebugSystem.success("✅ AIMBOT LOAD XONG!")
 print("✅ Fix Lag: AUTO (Luôn bật)")
 print("🎯 Aimbot: Bấm ON để kích hoạt")
-print("🔍 Debug: Xem góc phải màn hình")
 
--- ============================================
--- HẾT PHẦN 2 - XONG!
--- ============================================
+spawn(function()
+    while wait(0.08) do
+        if Settings.Enabled then
+            local char = LocalPlayer.Character
+            if char and CurrentTarget and CurrentTarget.Parent then
+                local humanoid = CurrentTarget:FindFirstChildOfClass("Humanoid")
+                local hrpTarget = CurrentTarget:FindFirstChild("HumanoidRootPart")
+                local hrpPlayer = char:FindFirstChild("HumanoidRootPart")
+                if humanoid and hrpTarget and hrpPlayer and humanoid.Health > 0 then
+                    local distance = (hrpPlayer.Position - hrpTarget.Position).Magnitude
+                    StatusLabel.Text = "🎯 Locked: " .. CurrentTarget.Name
+                    TargetInfoLabel.Text = string.format("🎯 HP: %.0f | %.1fm", humanoid.Health, distance)
+                end
+            else
+                StatusLabel.Text = "🔍 Searching..."
+            end
+            if NearestThreat and NearestThreat.Model and NearestThreat.Model.Parent then
+                local d = NearestThreat.Distance
+                RadarLabel.Text = string.format("📡 %s | %.1fm", NearestThreat.Name, d)
+                if d < Settings.RadarDangerZone then
+                    RadarLabel.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+                    WarningLabel.Text = "🚨 NGUY HIỂM!"
+                    WarningLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                elseif d < Settings.RadarWarningZone then
+                    RadarLabel.BackgroundColor3 = Color3.fromRGB(180, 140, 0)
+                    WarningLabel.Text = "⚠️ CẢNH GIÁC!"
+                    WarningLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+                else
+                    RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
+                    WarningLabel.Text = "✅ AN TOÀN"
+                    WarningLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                end
+            else
+                RadarLabel.Text = "📡 RADAR: Clear ✓"
+                RadarLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            end
+        end
+    end
+end)
