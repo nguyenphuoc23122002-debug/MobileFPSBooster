@@ -326,7 +326,6 @@ end
 DebugSystem.success("Debug System Pro khởi động!", "SYSTEM")
 
 return DebugSystem
-
 -- PHẦN 2: SCRIPT CHÍNH (LocalScript)
 -- Hãy đặt DebugSystem ModuleScript (file bên trên) vào ReplicatedStorage.
 -- Script chính này sẽ require DebugSystem từ ReplicatedStorage.
